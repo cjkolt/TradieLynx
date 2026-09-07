@@ -1,0 +1,35 @@
+package pages
+
+templ LoginPage() {
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="hero-media">
+        <img src="/static/img/lynx_logo.png" alt="Tradielynx">
+      </div>
+
+      <div class="hero-text">
+        <h1>Tradielynx</h1>
+        <p>Connecting skilled trades to you - locally</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h1>Login</h1>
+
+      <form hx-post="/login" hx-target="#feedback-login" hx-swap="innerHTML" method="POST">
+        <label>User Email:</label>
+        <input type="text" name="email" placeholder="Email">
+
+        <label>User Password:</label>
+        <input type="password" name="password" placeholder="password">
+        <br>
+
+        <button type="submit">Submit</button>
+      </form>
+
+      <div id="feedback-login"></div> <!-- HTMX will fill this with the server response -->
+
+      <p>Don’t have an account? <a href="/register">Register</a></p>
+  </section>
+}

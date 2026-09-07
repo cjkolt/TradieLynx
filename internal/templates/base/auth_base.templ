@@ -1,0 +1,18 @@
+package base
+
+templ AuthBase(title string, content templ.Component) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<title>{ title }</title>
+			<link rel="stylesheet" href="/static/css/styles.css"/>
+			<script src="https://unpkg.com/htmx.org@1.9.2"></script>
+		</head>
+		<body class="auth-body" hx-boost="true" hx-target="#content" hx-push-url="true">
+			<main id="content" class="auth-content">
+				@content
+			</main>
+		</body>
+	</html>
+}

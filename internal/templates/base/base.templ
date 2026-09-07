@@ -1,0 +1,37 @@
+package base
+
+import (
+  "tradielynx/internal/models"
+  "tradielynx/internal/templates/partials/nav"
+)
+
+templ Base(data models.Data, content templ.Component) {
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>{ data.Title }Tradielynx</title>
+    <link rel="stylesheet" href="/static/css/styles.css"/>
+    <!-- Includes HTMX by loading from a CDN -->
+    <script src="https://unpkg.com/htmx.org@1.9.2"></script>
+  </head>
+
+  <body class="app-body" hx-boost="true" hx-target="#content">
+    <header class="app-header">
+      switch data.User.Role {
+      case models.RoleHomeowner:
+        @nav.NavHomeowner()
+      case models.RoleTradesperson:
+        @nav.NavTradesperson()
+      case models.RoleAdmin:
+        @nav.NavAdmin()
+      }
+    </header>
+
+    <main id="content" class="app-content">
+      @content
+    </main>
+  </body>
+  </html>
+}

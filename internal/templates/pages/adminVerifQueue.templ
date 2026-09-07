@@ -1,0 +1,39 @@
+package pages
+
+import (
+  "strconv"
+  "tradielynx/internal/models"
+)
+
+templ AdminVerifQueuePage(user models.LoggedUser, pending []models.User) {
+  <section class="container">
+    <header>
+      <h1>Pending Verifications</h1>
+      <p class="sub">Tradespeople waiting for account approval.</p>
+    </header>
+
+    if len(pending) == 0 {
+      <div class="card body">
+        <p>No tradespeople are waiting for verification.</p>
+      </div>
+    }
+
+    if len(pending) > 0 {
+      <div class="admin-list">
+        for _, person := range pending {
+          <div class="card body admin-row">
+            <div>
+              <strong>{ person.FirstName } { person.LastName }</strong>
+              <p class="muted">{ person.Email }</p>
+            </div>
+
+            <form method="POST" action="/verif-queue/verify">
+              <input type="hidden" name="user_id" value={ strconv.FormatInt(person.ID, 10) }/>
+              <button class="btn primary" type="submit">Verify</button>
+            </form>
+          </div>
+        }
+      </div>
+    }
+  </section>
+}

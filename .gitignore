@@ -1,0 +1,13 @@
+# Local configuration / secrets
+config.json
+.env
+
+# Runtime data
+logs/
+data/
+*.log
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+

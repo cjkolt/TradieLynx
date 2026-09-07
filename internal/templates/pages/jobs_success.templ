@@ -1,0 +1,21 @@
+package pages
+
+import "tradielynx/internal/models"
+
+templ PostJobSuccessPage(user models.LoggedUser) {
+  <main class="wrap">
+    <section class="card" aria-live="polite">
+      <header class="head">
+        <h1>Job posted successfully</h1>
+      </header>
+
+      <div class="body">
+        <p class="muted">Your job is live and can now be viewed by tradespeople.</p>
+        <div class="actions">
+          <a class="btn primary" href="/my-jobs">View My Jobs</a>
+          <a class="btn" href="/post-job">Post Another Job</a>
+        </div>
+      </div>
+    </section>
+  </main>
+}

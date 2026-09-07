@@ -1,0 +1,19 @@
+package nav
+
+templ NavHomeowner() {
+  <nav class="app-nav" hx-boost="false">
+    <ul>
+      <li class="nav-logo">
+        <a href="/dashboard" class="logo-link">
+          <img src="/static/img/lynx_logo.png" alt="Tradielynx" class="logo-img"/>
+        </a>
+      </li>
+      <li><a href="/dashboard">Home</a></li>
+      <li><a href="/job-listings">Job Listings</a></li>
+      <li><a href="/post-job">Post New Job</a></li>
+      <li class="nav-left"><a href="/my-jobs">My Jobs</a></li>
+      <li><a href="/profile">Profile</a></li>
+      <li><a href="/logout" hx-post="/logout" hx-target="body" hx-swap="outerHTML">Logout</a></li>
+    </ul>
+  </nav>
+}

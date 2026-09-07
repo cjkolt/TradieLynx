@@ -1,0 +1,50 @@
+package pages
+
+import "strconv"
+
+templ BidFormFragment(jobID int64) {
+  <div id="bid-section" class="bid-card">
+    <h3>Place a Bid</h3>
+
+    <form class="bid-form"
+          hx-post="/bids"
+          hx-target="#bid-section"
+          hx-swap="outerHTML">
+      <input type="hidden" name="job_id" value={ strconv.FormatInt(jobID, 10) }/>
+
+      <label class="bid-label">Amount</label>
+      <input class="bid-input" type="number" name="amount" min="1" step="0.01" placeholder="e.g. 450.00" required/>
+
+      <label class="bid-label">Message (optional)</label>
+      <textarea class="bid-textarea" name="message" placeholder="Short note..."></textarea>
+
+      <div class="bid-actions">
+        <button class="btn primary" type="submit">Submit Bid</button>
+      </div>
+    </form>
+  </div>
+}
+
+templ BidFormFragmentWithError(jobID int64, msg string) {
+  <div id="bid-section" class="bid-card">
+    <h3>Place a Bid</h3>
+    <p class="error">{ msg }</p>
+
+    <form class="bid-form"
+          hx-post="/bids"
+          hx-target="#bid-section"
+          hx-swap="outerHTML">
+      <input type="hidden" name="job_id" value={ strconv.FormatInt(jobID, 10) }/>
+
+      <label class="bid-label">Amount</label>
+      <input class="bid-input" type="number" name="amount" min="1" step="0.01" placeholder="e.g. 450.00" required/>
+
+      <label class="bid-label">Message (optional)</label>
+      <textarea class="bid-textarea" name="message" placeholder="Short note..."></textarea>
+
+      <div class="bid-actions">
+        <button class="btn primary" type="submit">Submit Bid</button>
+      </div>
+    </form>
+  </div>
+}

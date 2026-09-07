@@ -1,0 +1,17 @@
+package pages
+
+import "tradielynx/internal/models"
+
+templ ProfilePage(user models.LoggedUser) {
+  <section class="wrap">
+    <div class="card">
+      <header class="head">
+        <h1>My Profile</h1>
+      </header>
+      <div class="body">
+        <p><strong>Name:</strong> { user.FirstName }</p>
+        <p><strong>Role:</strong> { string(user.Role) }</p>
+      </div>
+    </div>
+  </section>
+}

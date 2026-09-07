@@ -1,0 +1,44 @@
+package pages
+
+import (
+  "tradielynx/internal/models"
+  "strconv"
+)
+
+templ JobListingsPage(user models.LoggedUser, jobs []models.Job) {
+  <section>
+    <header>
+      <div class="container">
+        <h1>Recently Posted Jobs</h1>
+        <p class="sub">Click any job to view details.</p>
+      </div>
+    </header>
+  </section>
+
+  <main class="jl-grid container" aria-live="polite">
+    if len(jobs) == 0 {
+      <p class="jl-muted">No jobs available right now.</p>
+    }
+
+    for _, job := range jobs {
+      <a class="jl-card" href={ "/jobs/" + strconv.FormatInt(job.ID, 10) }>
+        <div class="jl-meta">
+          <div class="jl-row">
+            <h2 class="jl-title-sm">{ job.Title }</h2>
+            if job.BudgetMinMax != "" {
+              <div class="jl-price">{ job.BudgetMinMax }</div>
+            }
+          </div>
+
+          if job.PreferredTimeframe != "" {
+            <div class="jl-row">
+              <span class="jl-pill">{ job.PreferredTimeframe }</span>
+            </div>
+          }
+
+          <div class="jl-muted">📍 { job.PostCode }</div>
+        </div>
+      </a>
+    }
+  </main>
+}

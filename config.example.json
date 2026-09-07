@@ -1,0 +1,11 @@
+{
+  "log_directory": "./logs",
+  "data_directory": "./data",
+  "db_config": {
+    "db_user": "db_user",
+    "db_password": "db_password",
+    "db_name": "db_name",
+    "db_host": "db",
+    "db_port": 5432
+  }
+}

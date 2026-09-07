@@ -1,0 +1,35 @@
+package pages
+
+templ RegisterPage() {
+  <section class="reg-form">
+    <h1>Register</h1>
+
+    <form hx-post="/register" hx-target="#feedback-registration" hx-swap="innerHTML" method="POST">
+      <label>First Name:</label>
+      <input type="text" name="first_name" placeholder="First name" required>
+
+      <label>Last Name:</label>
+      <input type="text" name="last_name" placeholder="Last name" required>
+
+      <label>Email:</label>
+      <input type="email" name="email" placeholder="Email" required>
+
+      <label>Password:</label>
+      <input type="password" name="password" placeholder="Password" required>
+
+      <h3>Role:</h3>
+      <label>Homeowner:</label>
+      <input type="radio" name="role" value="Homeowner" checked required>
+
+      <label>Tradesperson:</label>
+      <input type="radio" name="role" value="Tradesperson">
+
+      <br>
+      <button type="submit">Create account</button>
+    </form>
+
+    <p>Already have an account? <a href="/login">Back to Login</a></p>
+
+    <div id="feedback-registration"></div> <!-- HTMX will fill this with the server response -->
+  </section>
+}

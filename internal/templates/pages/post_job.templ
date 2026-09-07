@@ -1,0 +1,35 @@
+package pages
+
+import "tradielynx/internal/models"
+
+templ PostJobPage(user models.LoggedUser) {
+  <section class="post-job-form">
+
+    <h1>Post a New Job</h1>
+      <form hx-post="/new-job" hx-swap="innerHTML" method="POST">
+        <label>Job Title <span>(Required)</span></label>
+        <input type="text" name="job-title" required>
+
+        <label>Job Description <span>(Required)</span></label>
+        <input type="text" name="job-description" required>
+
+        <label>Postal Code <span>(Required)</span></label>
+        <input type="text" name="job-postcode" required>
+
+        <label>Preferred Timeframe <span>(optional)</span></label>
+        <input type="text" name="job-timeframe">
+
+        <fieldset>
+            <legend>Budget Range <span>(Optional)</span></legend>
+            <label>Minimum Budget</label>
+            <input type="text" name="job-min">
+
+            <label>Maximum Budget</label>
+            <input type="text" name="job-max">
+        </fieldset>
+        <button type="submit">Post Job</button>
+          
+      </form>
+        
+  </section>
+}

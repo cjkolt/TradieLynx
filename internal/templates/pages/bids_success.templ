@@ -1,0 +1,32 @@
+package pages
+
+import (
+  "strconv"
+  "tradielynx/internal/models"
+)
+
+templ BidsSuccessPage(user models.LoggedUser, bid models.Bid) {
+  <main class="wrap">
+    <section class="card" aria-live="polite">
+      <header class="head">
+        <h1>Bid posted successfully</h1>
+      </header>
+
+      <div class="body">
+        <p class="muted">Your bid is live.</p>
+
+        <ul class="list">
+          <li class="row"><span class="key">Bid ID</span><span>{ strconv.FormatInt(bid.ID, 10) }</span></li>
+          <li class="row"><span class="key">Job ID</span><span>{ strconv.FormatInt(bid.JobID, 10) }</span></li>
+          <li class="row"><span class="key">Amount</span><span>{ bid.Amount }</span></li>
+          <li class="row"><span class="key">Status</span><span>{ bid.Status }</span></li>
+        </ul>
+
+        <div class="actions">
+          <a class="btn primary" href={ "/jobs/" + strconv.FormatInt(bid.JobID, 10) }>Back to job</a>
+          <a class="btn" href="/my-bids">My bids</a>
+        </div>
+      </div>
+    </section>
+  </main>
+}

@@ -1,0 +1,52 @@
+package pages
+
+import (
+  "strconv"
+  "tradielynx/internal/models"
+)
+
+templ JobDetailPage(user models.LoggedUser, job models.Job) {
+  <section class="wrap job-detail">
+    <div class="card">
+      <header class="head">
+        <h1>{ job.Title }</h1>
+        <span class="jl-pill">{ string(job.Status) }</span>
+      </header>
+
+      <div class="body">
+        <p><strong>Location:</strong> { job.PostCode }</p>
+
+        if job.PreferredTimeframe != "" {
+          <p><strong>Preferred Timeframe:</strong> { job.PreferredTimeframe }</p>
+        }
+
+        if job.BudgetMinMax != "" {
+          <p><strong>Budget Range:</strong> { job.BudgetMinMax }</p>
+        }
+
+        <h2>Description</h2>
+        <p>{ job.Description }</p>
+
+        if user.IsActive && user.Role == models.RoleTradesperson && job.Status == models.JobOpen {
+          <div id="bid-section" class="bid-card">
+            <button
+              class="btn primary"
+              hx-get={ "/bids/form?job_id=" + strconv.FormatInt(job.ID, 10) }
+              hx-target="#bid-section"
+              hx-swap="outerHTML">
+              Place a Bid
+            </button>
+          </div>
+        } else if user.Role == models.RoleTradesperson && !user.IsActive {
+          <div class="bid-card">
+            <p class="muted">Only verified tradespeople can place bids.</p>
+          </div>
+        }
+
+        <div class="actions">
+          <a class="btn" href="/job-listings">Back to jobs</a>
+        </div>
+      </div>
+    </div>
+  </section>
+}

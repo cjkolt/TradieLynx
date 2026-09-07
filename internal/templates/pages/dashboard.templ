@@ -1,0 +1,11 @@
+package pages
+
+import "tradielynx/internal/models"
+
+templ DashboardPage(data models.Data) {
+  <img src="/static/img/lynx_logo.png" alt="Tradielynx">
+  <header>
+    <h1>Tradielynx</h1>
+    <h2>Welcome, { data.User.FirstName }!</h2>
+  </header>
+}
