@@ -25,7 +25,7 @@ jobs:
         run: go install github.com/a-h/templ/cmd/templ@v0.3.924
 
       - name: Generate Go templates
-        run: "$(go env GOPATH)/bin/templ" generate
+        run: $(go env GOPATH)/bin/templ generate
 
       - name: Run unit tests and compile packages
         run: go test ./...
