@@ -82,8 +82,8 @@ The easiest way to run the project is with:
 ### 1. Clone the repository
 
 ```bash
-git clone <your-repository-url>
-cd tradielynx
+git clone https://github.com/cjkolt/TradieLynx.git
+cd TradieLynx
 ```
 
 ### 2. Create local environment variables
@@ -151,6 +151,29 @@ go run ./cmd/app
 
 You will also need a reachable PostgreSQL database and either `config.json` or the required database environment variables.
 
+## Automated Checks
+
+GitHub Actions generates the templates, compiles and tests all packages, and
+runs static analysis on pull requests and pushes to main.
+
+To run the same checks locally with Go 1.24.3 or newer:
+
+```bash
+go install github.com/a-h/templ/cmd/templ@v0.3.924
+"$(go env GOPATH)/bin/templ" generate
+go test ./...
+go vet ./...
+```
+
+The unit tests do not require PostgreSQL. They cover password verification,
+role parsing, anonymous and inactive access, allowed and forbidden roles,
+browser and HTMX redirects, preservation of the original request URL, and
+removal of access when an authoritative role lookup replaces a stale admin
+session role.
+
+These checks are a baseline. Database-backed registration, job posting, bid
+ownership, and complete browser workflows still need integration tests.
+
 ## Security Notes
 
 - Passwords are hashed with bcrypt before storage.
@@ -174,7 +197,7 @@ Not part of the current MVP yet:
 - Notifications
 - Search and filtering
 - More complete admin tools
-- Automated tests and CI
+- Database-backed integration tests and browser workflow tests
 - Production deployment configuration
 
 ## Project Status
