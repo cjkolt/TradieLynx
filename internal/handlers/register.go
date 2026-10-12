@@ -15,17 +15,14 @@ import (
 	"github.com/a-h/templ"
 )
 
-// Handles call to register new user
 func ServeRegister(dbConn *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			// HTMX nav → return fragment only
 			if r.Header.Get("HX-Request") == "true" {
 				templ.Handler(pages.RegisterPage()).ServeHTTP(w, r)
 				return
 			}
-			// Full page load
 			templ.Handler(base.AuthBase("Tradielynx", pages.RegisterPage())).ServeHTTP(w, r)
 			return
 
@@ -36,13 +33,12 @@ func ServeRegister(dbConn *sql.DB) http.HandlerFunc {
 			}
 			firstName := strings.TrimSpace(r.FormValue("first_name"))
 			lastName := strings.TrimSpace(r.FormValue("last_name"))
-			email := db.NormalizeString(r.FormValue("email"))
+			email := db.NormalizeEmail(r.FormValue("email"))
 			password := r.FormValue("password")
 			role := r.FormValue("role")
 
 			roleVal, ok := models.ParseRole(role)
 			if !ok || roleVal == models.RoleAdmin {
-				// Admin accounts are never created from the public registration form.
 				http.Error(w, "invalid role", http.StatusBadRequest)
 				return
 			}
@@ -53,7 +49,6 @@ func ServeRegister(dbConn *sql.DB) http.HandlerFunc {
 				return
 			}
 
-			// boolean for verified tradesperson status at this MVP stage
 			isActive := true
 			if roleVal == models.RoleTradesperson {
 				isActive = false
@@ -75,7 +70,6 @@ func ServeRegister(dbConn *sql.DB) http.HandlerFunc {
 			}
 
 			if user.IsActive {
-				// Success -> go to login (HTMX vs non-HTMX)
 				if r.Header.Get("HX-Request") == "true" {
 					w.Header().Set("HX-Redirect", "/login")
 					w.WriteHeader(http.StatusNoContent)
@@ -85,7 +79,6 @@ func ServeRegister(dbConn *sql.DB) http.HandlerFunc {
 				return
 			}
 
-			// Tradesperson waits for verification before logging in.
 			if r.Header.Get("HX-Request") == "true" {
 				w.Header().Set("HX-Redirect", "/await-verif")
 				w.WriteHeader(http.StatusNoContent)
