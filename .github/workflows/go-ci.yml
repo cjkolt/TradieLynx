@@ -32,3 +32,6 @@ jobs:
 
       - name: Run static checks
         run: go vet ./...
+
+      - name: Build application
+        run: go build ./cmd/app
