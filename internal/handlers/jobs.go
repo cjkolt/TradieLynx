@@ -44,18 +44,20 @@ func JobsNew(dbConn *sql.DB) http.HandlerFunc {
 
 		var minBudget, maxBudget float64
 		if budgetMin != "" {
-			minBudget, err = strconv.ParseFloat(budgetMin, 64)
-			if err != nil || minBudget < 0 {
+			parsedMin, err := strconv.ParseFloat(budgetMin, 64)
+			if err != nil || parsedMin < 0 {
 				_ = shared.Error("Minimum budget must be a positive number.").Render(r.Context(), w)
 				return
 			}
+			minBudget = parsedMin
 		}
 		if budgetMax != "" {
-			maxBudget, err = strconv.ParseFloat(budgetMax, 64)
-			if err != nil || maxBudget < 0 {
+			parsedMax, err := strconv.ParseFloat(budgetMax, 64)
+			if err != nil || parsedMax < 0 {
 				_ = shared.Error("Maximum budget must be a positive number.").Render(r.Context(), w)
 				return
 			}
+			maxBudget = parsedMax
 		}
 		if budgetMin != "" && budgetMax != "" && minBudget > maxBudget {
 			_ = shared.Error("Minimum budget cannot be higher than maximum.").Render(r.Context(), w)
