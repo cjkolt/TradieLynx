@@ -61,7 +61,7 @@ func main() {
 	userRepo := &db.UserRepo{DB: dbConnection}
 	auth.UseAuthSource(userRepo)
 
-		// Handles requests at site's root address
+	// Handles requests at site's root address
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if session.Manager.Exists(r.Context(), "userID") {
 			http.Redirect(w, r, "/dashboard", http.StatusFound)
