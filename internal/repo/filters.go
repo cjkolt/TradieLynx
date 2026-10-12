@@ -32,7 +32,7 @@ func ListOpenJobsFiltered(ctx context.Context, db *sql.DB, filter models.JobFilt
 			OR title ILIKE '%' || $2 || '%'
 			OR description ILIKE '%' || $2 || '%'
 		  )
-		  AND ($3 = '' OR postcode ILIKE $3 || '%')
+		  AND ($3 = '' OR REPLACE(postcode, ' ', '') ILIKE REPLACE($3, ' ', '') || '%')
 		ORDER BY id DESC
 		LIMIT $4 OFFSET $5
 	`
