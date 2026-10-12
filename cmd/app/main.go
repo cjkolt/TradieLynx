@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 
-	// These imports allow the funcs from each path to be used
 	"tradielynx"
 	"tradielynx/internal/auth"
 	"tradielynx/internal/config"
@@ -21,14 +20,11 @@ import (
 )
 
 func main() {
-	// Load Configuration
 	currentWorkingDir, err := os.Getwd()
 	if err != nil {
 		log.Fatalf("Failed to get executable path: %v", err)
 	}
 
-	// config.json is still supported for simple local development.
-	// Docker can override it with CONFIG_PATH + DB environment variables.
 	configFilePath := os.Getenv("CONFIG_PATH")
 	if configFilePath == "" {
 		configFilePath = filepath.Join(currentWorkingDir, "config.json")
@@ -40,7 +36,6 @@ func main() {
 	}
 	config.AppConfig = cfg
 
-	// Make sure log and data directories exist
 	if err := os.MkdirAll(cfg.LogDirectory, 0755); err != nil {
 		log.Printf("Warning: Could not create log directory %s: %v", cfg.LogDirectory, err)
 	}
@@ -48,46 +43,23 @@ func main() {
 		log.Printf("Warning: Could not create data directory %s: %v", cfg.DataDirectory, err)
 	}
 
-	// Called to allow css styling to be used
 	tradielynx.UseEmbeddedContent()
 
-	// Initializes the database
 	dbConnection, err := db.InitializeDB()
 	if err != nil {
 		log.Fatal("DB connection failed:", err)
 	}
 	defer dbConnection.Close()
 
-	// Optional local-dev admin bootstrap. Public registration can never create admins.
 	if err := bootstrapAdmin(context.Background(), dbConnection); err != nil {
 		log.Fatalf("Failed to bootstrap admin: %v", err)
 	}
 
-	// --- Session + auth plumbing -----------------------------------------------
-
-	// 1) Initialize SCS session manager (cookie settings, idle/lifetime, SameSite)
-	// Must run once at startup *before* any handlers are registered
 	session.InitSession()
+	auth.UseSessionManager(session.Manager)
 
-	// 2) Provide the session manager to the auth package so middleware/handlers
-	// can read/write session values. We store:
-	//   - "userID"  (int64)   -> authenticated user id
-	//   - "userRole" (string) -> last known role (used as a fast fallback)
-	//   - "userIsActive"      -> verified/active account state
-	auth.UseSessionManager(session.Manager) // inject scs manager
-
-	// 3) Register a role lookup source used by auth.RequireAuth/RequireRole to
-	// refresh the user's role from the DB on requests (decouples auth from data)
-	repo := &db.UserRepo{DB: dbConnection}
-	auth.UseRoleSource(repo) // register repository for role lookup
-
-	/* ------------------------
-	HTTP routes:
-	Public      -> no middleware (e.g., /login, /register, assets)
-	Auth-only   -> RequireAuth
-	Role-gated  -> RequireAuth + RequireRole(...)
-	Each protected handler assumes claims are in context (set by RequireAuth).
-	*/ //----------------------
+	userRepo := &db.UserRepo{DB: dbConnection}
+	auth.UseAuthSource(userRepo)
 
 	// Handles requests at site's root address
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -101,10 +73,10 @@ func main() {
 	// Public (/login + /register + verification wait page)
 	http.HandleFunc("/login", handlers.Login(dbConnection))
 	http.HandleFunc("/register", handlers.ServeRegister(dbConnection))
-	http.HandleFunc("/await-verif", handlers.ServeAwaitVerif(dbConnection))
+	http.HandleFunc("/await-verif", handlers.ServeAwaitVerif())
 
 	// /logout — visible to any authenticated user
-	http.Handle("/logout", auth.Guard(http.HandlerFunc(handlers.Logout(dbConnection))))
+	http.Handle("/logout", auth.Guard(http.HandlerFunc(handlers.Logout())))
 
 	// /dashboard — visible to Homeowner + Tradesperson + Admins
 	http.Handle("/dashboard",
@@ -173,11 +145,8 @@ func main() {
 		auth.Guard(http.HandlerFunc(handlers.VerifyTradesperson(dbConnection)), models.RoleAdmin),
 	)
 
-	// Wrap the default mux with the session middleware so handlers can call
-	// session.Manager.Get/Put/GetInt64, etc. without manual plumbing.
 	mux := http.DefaultServeMux
 
-	// Bid routes are role-gated as well as checked inside the handlers.
 	mux.Handle("GET /bids/form",
 		auth.Guard(http.HandlerFunc(handlers.BidForm(dbConnection)), models.RoleTradesperson),
 	)
@@ -186,6 +155,9 @@ func main() {
 	)
 	mux.Handle("GET /bids/success",
 		auth.Guard(http.HandlerFunc(handlers.BidSuccess(dbConnection)), models.RoleTradesperson),
+	)
+	mux.Handle("POST /bids/award",
+		auth.Guard(http.HandlerFunc(handlers.BidAward(dbConnection)), models.RoleHomeowner),
 	)
 
 	sHandler := session.Manager.LoadAndSave(mux)

@@ -5,19 +5,32 @@ import (
   "strconv"
 )
 
-templ JobListingsPage(user models.LoggedUser, jobs []models.Job) {
+templ JobListingsPage(user models.LoggedUser, jobs []models.Job, filter models.JobFilter) {
   <section>
     <header>
       <div class="container">
         <h1>Recently Posted Jobs</h1>
         <p class="sub">Click any job to view details.</p>
+
+        <form class="jl-toolbar" method="GET" action="/job-listings">
+          <input class="jlist-input" type="search" name="q" value={ filter.Query } placeholder="Search jobs"/>
+          <input class="jlist-input" type="text" name="postcode" value={ filter.PostCode } placeholder="Postal code"/>
+          <button class="btn primary" type="submit">Search</button>
+          if filter.Query != "" || filter.PostCode != "" {
+            <a class="btn" href="/job-listings">Clear</a>
+          }
+        </form>
       </div>
     </header>
   </section>
 
   <main class="jl-grid container" aria-live="polite">
     if len(jobs) == 0 {
-      <p class="jl-muted">No jobs available right now.</p>
+      if filter.Query != "" || filter.PostCode != "" {
+        <p class="jl-muted">No open jobs matched your search.</p>
+      } else {
+        <p class="jl-muted">No jobs available right now.</p>
+      }
     }
 
     for _, job := range jobs {

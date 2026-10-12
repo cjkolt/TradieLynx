@@ -2,6 +2,9 @@
 config.json
 .env
 
+# Generated templ files
+*_templ.go
+
 # Runtime data
 logs/
 data/
@@ -10,4 +13,3 @@ data/
 # OS / editor noise
 .DS_Store
 Thumbs.db
-

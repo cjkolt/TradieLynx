@@ -10,11 +10,7 @@ import (
 
 var ErrJobNotFound = errors.New("job not found")
 
-// ListOpenJobs returns open jobs for contractor browsing.
-// Uses LIMIT/OFFSET for pagination. If you don't want pagination yet,
-// pass a sane limit (e.g. 50) and offset 0.
 func ListOpenJobs(ctx context.Context, db *sql.DB, limit, offset int) ([]models.Job, error) {
-	// Safety defaults to avoid accidental "SELECT * from jobs forever"
 	if limit <= 0 || limit > 200 {
 		limit = 50
 	}
@@ -85,8 +81,6 @@ func ListOpenJobs(ctx context.Context, db *sql.DB, limit, offset int) ([]models.
 	return jobs, nil
 }
 
-// GetJobByID returns a single job by ID.
-// Useful for /jobs/{id} detail pages.
 func GetJobByID(ctx context.Context, db *sql.DB, id int64) (models.Job, error) {
 	const q = `
 		SELECT
@@ -137,9 +131,6 @@ func GetJobByID(ctx context.Context, db *sql.DB, id int64) (models.Job, error) {
 	return j, nil
 }
 
-// GetJobForOwner is optional but recommended.
-// Prevents homeowners from reading jobs they don't own.
-// Useful for edit/delete views later.
 func GetJobForOwner(ctx context.Context, db *sql.DB, id, ownerID int64) (models.Job, error) {
 	const q = `
 		SELECT
@@ -192,8 +183,6 @@ func GetJobForOwner(ctx context.Context, db *sql.DB, id, ownerID int64) (models.
 	return j, nil
 }
 
-// ListJobsByOwner returns jobs posted by one homeowner.
-// Used by the My Jobs page.
 func ListJobsByOwner(ctx context.Context, db *sql.DB, ownerID int64) ([]models.Job, error) {
 	const q = `
 		SELECT
@@ -257,8 +246,6 @@ func ListJobsByOwner(ctx context.Context, db *sql.DB, ownerID int64) ([]models.J
 	return jobs, nil
 }
 
-// ListBidsByTradesperson returns bids submitted by one tradesperson.
-// The job title is joined in so My Bids can link back to the job.
 func ListBidsByTradesperson(ctx context.Context, db *sql.DB, tradespersonID int64) ([]models.Bid, error) {
 	const q = `
 		SELECT

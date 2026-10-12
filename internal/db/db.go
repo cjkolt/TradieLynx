@@ -4,19 +4,14 @@ import (
 	"database/sql"
 	"fmt"
 
-	// Is not called directly in our code, just imported to enable PostgreSQL driver support
-	_ "github.com/lib/pq" // '_' keeps import
+	_ "github.com/lib/pq"
 
 	"tradielynx/internal/config"
 )
 
-// Global DB variable
-var DB *sql.DB
-
-// Initializes and returns PostgreSQL database connection
 func InitializeDB() (*sql.DB, error) {
 	dbConfig := config.AppConfig.DBConfig
-	dbConnectionString := fmt.Sprintf( // Builds the string from the JSON file
+	dbConnectionString := fmt.Sprintf(
 		"user=%s password=%s dbname=%s host=%s port=%d sslmode=disable",
 		dbConfig.DBUser,
 		dbConfig.DBPassword,
@@ -25,15 +20,13 @@ func InitializeDB() (*sql.DB, error) {
 		dbConfig.DBPort,
 	)
 
-	// Opens the database
 	db, err := sql.Open("postgres", dbConnectionString)
 	if err != nil {
-		return nil, fmt.Errorf("Error opening database: %w", err)
+		return nil, fmt.Errorf("error opening database: %w", err)
 	}
 
-	// Tests database connection
 	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("Error: could not ping DB: %w", err)
+		return nil, fmt.Errorf("could not ping database: %w", err)
 	}
 
 	return db, nil

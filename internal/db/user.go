@@ -9,44 +9,31 @@ import (
 	"tradielynx/internal/models"
 )
 
-var (
-	ErrUserNotFound   = errors.New("user not found")
-	ErrBadPassword    = errors.New("bad password")
-	ErrStatusNotFound = errors.New("tradesperson verification status not found")
-)
+var ErrUserNotFound = errors.New("user not found")
 
-type UserRepo struct{ DB *sql.DB } // data-access wrapper used by the auth layer.
+type UserRepo struct{ DB *sql.DB }
 
-// NormalizeEmail trims and lowercases before DB use.
-// CITEXT makes comparisons case-insensitive, but normalizing helps UX consistency.
-func NormalizeString(s string) string {
-	return strings.TrimSpace(strings.ToLower(s))
+func NormalizeEmail(email string) string {
+	return strings.TrimSpace(strings.ToLower(email))
 }
 
-// InsertUser inserts a new user. On success it returns a null error
 func InsertUser(ctx context.Context, db *sql.DB, user models.User) error {
 	const q = `
 		INSERT INTO users (first_name, last_name, email, password_hash, user_role, active)
 		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id
 	`
-	var id int64
-	err := db.QueryRowContext(ctx, q,
+
+	_, err := db.ExecContext(ctx, q,
 		user.FirstName,
 		user.LastName,
-		NormalizeString(user.Email),
+		NormalizeEmail(user.Email),
 		user.HashedPassword,
 		user.Role,
 		user.IsActive,
-	).Scan(&id)
-	if err != nil {
-		return err
-	}
-	return nil
+	)
+	return err
 }
 
-// RetrieveUserByEmail loads the user row for login.
-// It does NOT verify password—crypto is kept in the handler/service.
 func RetrieveUserByEmail(ctx context.Context, db *sql.DB, email string) (models.User, error) {
 	const q = `
 		SELECT id, first_name, COALESCE(last_name,''), email, password_hash, user_role::text, active
@@ -54,40 +41,43 @@ func RetrieveUserByEmail(ctx context.Context, db *sql.DB, email string) (models.
 		WHERE email = $1
 		LIMIT 1
 	`
+
 	var (
 		u       models.User
 		roleStr string
 	)
-	err := db.QueryRowContext(ctx, q, NormalizeString(email)).
-		Scan(&u.ID, &u.FirstName, &u.LastName, &u.Email, &u.HashedPassword, &roleStr,
-			&u.IsActive)
+
+	err := db.QueryRowContext(ctx, q, NormalizeEmail(email)).
+		Scan(&u.ID, &u.FirstName, &u.LastName, &u.Email, &u.HashedPassword, &roleStr, &u.IsActive)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return models.User{}, ErrUserNotFound
 		}
 		return models.User{}, err
 	}
+
 	u.Role = models.Role(roleStr)
 	return u, nil
 }
 
-// RetrieveUserByID returns a minimal user row for dashboard/etc.
 func RetrieveUserByID(ctx context.Context, db *sql.DB, userID int64) (models.User, error) {
 	const q = `
 		SELECT id,
-       		   first_name,
-       		   COALESCE(last_name, ''),
-       		   email,
-       		   user_role::text,
-       		   active
+			   first_name,
+			   COALESCE(last_name, ''),
+			   email,
+			   user_role::text,
+			   active
 		FROM users
 		WHERE id = $1
 		LIMIT 1;
 	`
+
 	var (
 		u       models.User
 		roleStr string
 	)
+
 	err := db.QueryRowContext(ctx, q, userID).
 		Scan(&u.ID, &u.FirstName, &u.LastName, &u.Email, &roleStr, &u.IsActive)
 	if err != nil {
@@ -96,47 +86,35 @@ func RetrieveUserByID(ctx context.Context, db *sql.DB, userID int64) (models.Use
 		}
 		return models.User{}, err
 	}
+
 	u.Role = models.Role(roleStr)
 	return u, nil
 }
 
-// LookupRole is used by middleware to refresh the role from DB.
-func LookupRole(ctx context.Context, db *sql.DB, userID int64) (models.Role, error) {
-	const q = `SELECT user_role::text FROM users WHERE id = $1 AND active = TRUE`
-	var s string
-	if err := db.QueryRowContext(ctx, q, userID).Scan(&s); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return "", ErrUserNotFound
-		}
-		return "", err
-	}
-	return models.Role(s), nil
-}
+func (r *UserRepo) LookupUserAuth(ctx context.Context, userID int64) (models.Role, bool, error) {
+	var (
+		roleStr string
+		active  bool
+	)
 
-// returns the user's role from the database, called by RequireAuth()
-func (r *UserRepo) LookupUserRole(ctx context.Context, userID int64) (models.Role, error) {
-	var s string
-	// grabs user's role from DB, stores in 's'
 	err := r.DB.QueryRowContext(ctx,
-		`SELECT user_role::text FROM users WHERE id = $1`, userID,
-	).Scan(&s)
+		`SELECT user_role::text, active FROM users WHERE id = $1`, userID,
+	).Scan(&roleStr, &active)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return "", ErrUserNotFound
+			return "", false, ErrUserNotFound
 		}
-		return "", err
+		return "", false, err
 	}
 
-	switch models.Role(s) {
-	case models.RoleHomeowner, models.RoleTradesperson, models.RoleAdmin:
-		return models.Role(s), nil
-	default:
-		// Bad/unknown value in DB – treated as not found
-		return "", ErrUserNotFound
+	role, ok := models.ParseRole(roleStr)
+	if !ok {
+		return "", false, ErrUserNotFound
 	}
+
+	return role, active, nil
 }
 
-// Returns tradespeople who are still waiting for account verification.
 func ListPendingTradespeople(ctx context.Context, db *sql.DB) ([]models.User, error) {
 	const q = `
 		SELECT id, first_name, COALESCE(last_name, ''), email, user_role::text, active
@@ -181,7 +159,6 @@ func ListPendingTradespeople(ctx context.Context, db *sql.DB) ([]models.User, er
 	return users, nil
 }
 
-// Activates a tradesperson after an admin approves the account.
 func ActivateTradesperson(ctx context.Context, db *sql.DB, userID int64) error {
 	result, err := db.ExecContext(ctx, `
 		UPDATE users

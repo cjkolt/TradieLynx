@@ -1,6 +1,6 @@
 package models
 
-type User struct { // Structure for user registration
+type User struct {
 	ID             int64
 	FirstName      string
 	LastName       string
@@ -10,15 +10,7 @@ type User struct { // Structure for user registration
 	IsActive       bool
 }
 
-type AuthUser struct { // Structure for verifying login
-	ID        int64
-	FirstName string
-	Email     string
-	Role      string
-	IsActive  bool
-}
-
-type LoggedUser struct { // Structure for logged-in user info for custom pages
+type LoggedUser struct {
 	ID        int64
 	FirstName string
 	Role      Role

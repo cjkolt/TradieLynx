@@ -5,7 +5,7 @@ import (
   "tradielynx/internal/models"
 )
 
-templ JobDetailPage(user models.LoggedUser, job models.Job) {
+templ JobDetailPage(user models.LoggedUser, job models.Job, bids []models.Bid) {
   <section class="wrap job-detail">
     <div class="card">
       <header class="head">
@@ -26,6 +26,39 @@ templ JobDetailPage(user models.LoggedUser, job models.Job) {
 
         <h2>Description</h2>
         <p>{ job.Description }</p>
+
+        if user.Role == models.RoleHomeowner && job.HomeownerID == user.ID {
+          <div class="bid-list">
+            <h2>Bids Received</h2>
+
+            if len(bids) == 0 {
+              <p class="muted">No bids have been submitted yet.</p>
+            }
+
+            for _, bid := range bids {
+              <div class="bid-card">
+                <div class="jl-row">
+                  <strong>{ bid.TradespersonName }</strong>
+                  <span class="jl-pill">{ string(bid.Status) }</span>
+                </div>
+
+                <p class="jl-price">{"$" + bid.Amount}</p>
+
+                if bid.Message != "" {
+                  <p>{ bid.Message }</p>
+                }
+
+                if job.Status == models.JobOpen && bid.Status == models.BidSubmitted {
+                  <form method="POST" action="/bids/award">
+                    <input type="hidden" name="job_id" value={ strconv.FormatInt(job.ID, 10) }/>
+                    <input type="hidden" name="bid_id" value={ strconv.FormatInt(bid.ID, 10) }/>
+                    <button class="btn primary" type="submit">Accept Bid</button>
+                  </form>
+                }
+              </div>
+            }
+          </div>
+        }
 
         if user.IsActive && user.Role == models.RoleTradesperson && job.Status == models.JobOpen {
           <div id="bid-section" class="bid-card">

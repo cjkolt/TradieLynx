@@ -96,10 +96,10 @@ nav a {
 /* Job Listings Styles -------------- */
 .jl-toolbar {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, 220px) auto auto;
   gap: 8px;
-  padding: 12px 16px;
-  align-items: right;
+  padding: 12px 0;
+  align-items: center;
   border-bottom: 1px solid #eee;
 }
 
@@ -111,7 +111,7 @@ nav a {
   border-radius: 8px;
   font: inherit;
 }
-.jl-btn { cursor: pointer; align-self: right; }
+.jl-btn { cursor: pointer; }
 
 .jl-grid {
   display: grid;
@@ -214,3 +214,5 @@ nav a {
   justify-content: space-between;
   gap: 16px;
 }
+
+.bid-list { display: grid; gap: 12px; margin-top: 24px; }
