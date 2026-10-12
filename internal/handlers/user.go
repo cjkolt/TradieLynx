@@ -15,13 +15,10 @@ import (
 	"github.com/a-h/templ"
 )
 
-// Handles call to render dashboard from login
 func ServeDashboard(dbConn *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// get user id from SCS (requireAuth already guaranteed it's present)
 		userID := session.Manager.GetInt64(r.Context(), "userID")
 
-		// load user data
 		user, err := db.RetrieveUserByID(r.Context(), dbConn, userID)
 		if err != nil {
 			templ.Handler(base.Base(
@@ -48,31 +45,24 @@ func ServeDashboard(dbConn *sql.DB) http.HandlerFunc {
 		hxTarget := r.Header.Get("HX-Target")
 
 		if hxReq && !hxBoosted && hxTarget == "content" {
-			// fragment-only response for targeted swaps
 			templ.Handler(page).ServeHTTP(w, r)
 			return
 		}
 
-		// normal GET -> Base + Page
 		templ.Handler(base.Base(data, page)).ServeHTTP(w, r)
 	}
 }
 
-// Handles call to render a nav-linked page for a logged-in user
 func ServeNavLink(dbConn *sql.DB, pageFunc func(models.LoggedUser) templ.Component,
 	title string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// session -> userID (requireAuth guarantees session exists)
 		userID := session.Manager.GetInt64(r.Context(), "userID")
 
-		// load user data for header/nav + page needs
 		user, err := db.RetrieveUserByID(r.Context(), dbConn, userID)
 		if err != nil {
-			// HTMX: send fragment error (keeps the rest of the page intact)
 			if r.Header.Get("HX-Request") == "true" {
 				templ.Handler(shared.Error("Could not load user")).ServeHTTP(w, r)
 			} else {
-				// full-page error (includes base layout)
 				templ.Handler(base.Base(models.Data{Title: "Error - "},
 					shared.Error("Could not load user"))).
 					ServeHTTP(w, r)
@@ -86,20 +76,17 @@ func ServeNavLink(dbConn *sql.DB, pageFunc func(models.LoggedUser) templ.Compone
 			Role:      user.Role,
 			IsActive:  user.IsActive,
 		}
-		page := pageFunc(loggedUser) // builds page content w/ user context
+		page := pageFunc(loggedUser)
 
-		// HTMX nav -> return only the fragment (no layout)
 		if r.Header.Get("HX-Request") == "true" {
 			templ.Handler(page).ServeHTTP(w, r)
 			return
 		}
-		//  Full GET -> wrap content in base layout (title + user in chrome)
 		templ.Handler(base.Base(models.Data{Title: title, User: loggedUser}, page)).
 			ServeHTTP(w, r)
 	}
 }
 
-// Handles the small admin verification queue used by this MVP stage.
 func AdminVerifQueue(dbConn *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
