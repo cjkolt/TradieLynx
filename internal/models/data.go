@@ -1,14 +1,13 @@
 package models
 
-type Data struct { // Used by base.go for filling w/ content
+type Data struct {
 	Title string
 	User  LoggedUser
 }
 
-// Represents the authenticated user for this request.
-// Fields are meant to be read-only after middleware attaches them.
+// Request identity added by auth middleware.
 type Claims struct {
-	UserID   int64 // DB id of the user
-	Role     Role  // role at the time if request (from session/DB)
+	UserID   int64
+	Role     Role
 	IsActive bool
 }
