@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"tradielynx/internal/auth"
 	"tradielynx/internal/db"
 	"tradielynx/internal/models"
 	"tradielynx/internal/repo"
@@ -113,8 +114,12 @@ func JobListings(dbConn *sql.DB) http.HandlerFunc {
 			IsActive:  user.IsActive,
 		}
 
-		// Keep the query bounded even though pagination is not shown in the MVP UI yet.
-		jobs, err := repo.ListOpenJobs(r.Context(), dbConn, 50, 0)
+		filter := models.JobFilter{
+			Query:    strings.TrimSpace(r.URL.Query().Get("q")),
+			PostCode: strings.TrimSpace(r.URL.Query().Get("postcode")),
+		}
+
+		jobs, err := repo.ListOpenJobsFiltered(r.Context(), dbConn, filter, 50, 0)
 		if err != nil {
 			if r.Header.Get("HX-Request") == "true" {
 				templ.Handler(shared.Error("Failed to load jobs")).ServeHTTP(w, r)
@@ -125,7 +130,7 @@ func JobListings(dbConn *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		page := pages.JobListingsPage(loggedUser, jobs)
+		page := pages.JobListingsPage(loggedUser, jobs, filter)
 
 		// HTMX nav -> fragment-only
 		if r.Header.Get("HX-Request") == "true" {
@@ -225,7 +230,16 @@ func JobDetail(dbConn *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		page := pages.JobDetailPage(logged, job)
+		bids := make([]models.Bid, 0)
+		if logged.Role == models.RoleHomeowner && job.HomeownerID == logged.ID {
+			bids, err = repo.ListBidsForJob(r.Context(), dbConn, job.ID, logged.ID)
+			if err != nil {
+				templ.Handler(shared.Error("Could not load bids")).ServeHTTP(w, r)
+				return
+			}
+		}
+
+		page := pages.JobDetailPage(logged, job, bids)
 
 		// HTMX swap: return body only
 		if r.Header.Get("HX-Request") == "true" {
@@ -461,5 +475,39 @@ func MyBids(dbConn *sql.DB) http.HandlerFunc {
 		}
 
 		templ.Handler(base.Base(models.Data{Title: "My Bids - ", User: logged}, page)).ServeHTTP(w, r)
+	}
+}
+
+func BidAward(dbConn *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "Invalid form submission", http.StatusBadRequest)
+			return
+		}
+
+		claims, ok := auth.ClaimsFromContext(r.Context())
+		if !ok || claims.UserID == 0 {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+
+		jobID, err := strconv.ParseInt(r.FormValue("job_id"), 10, 64)
+		if err != nil || jobID <= 0 {
+			http.Error(w, "Invalid job id", http.StatusBadRequest)
+			return
+		}
+
+		bidID, err := strconv.ParseInt(r.FormValue("bid_id"), 10, 64)
+		if err != nil || bidID <= 0 {
+			http.Error(w, "Invalid bid id", http.StatusBadRequest)
+			return
+		}
+
+		if err := repo.AwardBid(r.Context(), dbConn, claims.UserID, jobID, bidID); err != nil {
+			http.Error(w, "Could not award bid", http.StatusBadRequest)
+			return
+		}
+
+		http.Redirect(w, r, "/jobs/"+strconv.FormatInt(jobID, 10), http.StatusSeeOther)
 	}
 }
