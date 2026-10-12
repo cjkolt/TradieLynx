@@ -2,7 +2,7 @@
 
 TradieLynx is a marketplace MVP built to connect homeowners with local tradespeople.
 
-The current version focuses on the core workflow only: homeowners can post jobs, verified tradespeople can browse those jobs and submit bids, and each user can view the jobs or bids that belong to them.
+The current version focuses on the core marketplace workflow: homeowners post jobs and review submitted bids, while verified tradespeople search open jobs, place bids, and track whether those bids are accepted or rejected.
 
 This is an active portfolio project and is **not production-ready**. Features that are not part of the current MVP are kept in the roadmap instead of being shown as if they already work.
 
@@ -14,14 +14,16 @@ This is an active portfolio project and is **not production-ready**. Features th
 - Browse open jobs
 - View job details
 - View their own posted jobs
+- Review bids on their jobs
+- Award a job to one bidder
 
 ### Tradespeople
 - Register and wait for account verification
 - Log in after admin approval
-- Browse open jobs
+- Browse and search open jobs by keyword or postal code
 - View job details
 - Submit one bid per job
-- View their submitted bids
+- View their submitted bids and bid status
 
 ### Admin
 - Admin accounts cannot be created through public registration
@@ -34,6 +36,7 @@ This is an active portfolio project and is **not production-ready**. Features th
 - Password hashing with bcrypt
 - Role-based authorization for Homeowner, Tradesperson, and Administrator accounts
 - PostgreSQL persistence
+- Transactional bid awarding so the winner, other bids, and job status update together
 - Go server-side rendering with templ
 - HTMX for partial page interactions and redirects
 - Embedded static assets
@@ -163,13 +166,13 @@ go install github.com/a-h/templ/cmd/templ@v0.3.924
 "$(go env GOPATH)/bin/templ" generate
 go test ./...
 go vet ./...
+go build ./cmd/app
 ```
 
 The unit tests do not require PostgreSQL. They cover password verification,
 role parsing, anonymous and inactive access, allowed and forbidden roles,
 browser and HTMX redirects, preservation of the original request URL, and
-removal of access when an authoritative role lookup replaces a stale admin
-session role.
+refreshing account role/activity from the database before authorization.
 
 These checks are a baseline. Database-backed registration, job posting, bid
 ownership, and complete browser workflows still need integration tests.
@@ -180,28 +183,22 @@ ownership, and complete browser workflows still need integration tests.
 - `config.json` and `.env` are ignored by Git.
 - Public registration accepts only Homeowner and Tradesperson roles.
 - Protected routes use authentication and role middleware.
+- Role and active account state are refreshed from PostgreSQL before protected requests are authorized.
 - Bid ownership is checked before displaying a submitted bid confirmation.
 - Database credentials are supplied through local environment variables rather than being hardcoded in Docker Compose.
 
 This is still an MVP. Production deployment would need additional hardening, HTTPS-only cookies, stronger input validation, CSRF protections, rate limiting, and production secrets management.
 
-## Roadmap
+## Possible Future Work
 
-Not part of the current MVP yet:
-
-- Tradesperson profile and qualification uploads
-- Homeowner accepting / awarding bids
-- Direct messaging
-- Ratings and reviews
-- Job images
-- Notifications
-- Search and filtering
-- More complete admin tools
+- Direct messaging after a job is awarded
+- Richer tradesperson profiles and qualification uploads
+- Ratings and reviews after job completion
 - Database-backed integration tests and browser workflow tests
-- Production deployment configuration
+- Production deployment and security hardening
 
 ## Project Status
 
 **MVP / active development.**
 
-The current goal is to keep the core marketplace workflow small, functional, and understandable before expanding into the roadmap features.
+The portfolio MVP is intentionally kept small: posting, verification, job discovery, bidding, bid awarding, and role-based access are the focus.
