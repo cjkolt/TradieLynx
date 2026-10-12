@@ -42,6 +42,26 @@ func JobsNew(dbConn *sql.DB) http.HandlerFunc {
 			return
 		}
 
+		var minBudget, maxBudget float64
+		if budgetMin != "" {
+			minBudget, err = strconv.ParseFloat(budgetMin, 64)
+			if err != nil || minBudget < 0 {
+				_ = shared.Error("Minimum budget must be a positive number.").Render(r.Context(), w)
+				return
+			}
+		}
+		if budgetMax != "" {
+			maxBudget, err = strconv.ParseFloat(budgetMax, 64)
+			if err != nil || maxBudget < 0 {
+				_ = shared.Error("Maximum budget must be a positive number.").Render(r.Context(), w)
+				return
+			}
+		}
+		if budgetMin != "" && budgetMax != "" && minBudget > maxBudget {
+			_ = shared.Error("Minimum budget cannot be higher than maximum.").Render(r.Context(), w)
+			return
+		}
+
 		budgetMinMax := ""
 		switch {
 		case budgetMin != "" && budgetMax != "":
@@ -52,7 +72,6 @@ func JobsNew(dbConn *sql.DB) http.HandlerFunc {
 			budgetMinMax = "Up to " + budgetMax
 		}
 
-		// get user id from SCS (RequireAuth already guaranteed it's present)
 		userID := session.Manager.GetInt64(r.Context(), "userID")
 
 		job := models.Job{
@@ -70,7 +89,6 @@ func JobsNew(dbConn *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// Success
 		if r.Header.Get("HX-Request") == "true" {
 			w.Header().Set("HX-Redirect", "/success")
 			w.WriteHeader(http.StatusNoContent)
@@ -87,17 +105,14 @@ func JobListings(dbConn *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// session -> userID (auth.Guard/RequireAuth should guarantee this)
 		userID := session.Manager.GetInt64(r.Context(), "userID")
 		if userID == 0 {
 			http.Redirect(w, r, "/login", http.StatusFound)
 			return
 		}
 
-		// load user (for nav/header + page)
 		user, err := db.RetrieveUserByID(r.Context(), dbConn, userID)
 		if err != nil {
-			// HTMX: fragment error; non-HTMX: full base error
 			if r.Header.Get("HX-Request") == "true" {
 				templ.Handler(shared.Error("Could not load user")).ServeHTTP(w, r)
 			} else {
@@ -132,13 +147,11 @@ func JobListings(dbConn *sql.DB) http.HandlerFunc {
 
 		page := pages.JobListingsPage(loggedUser, jobs, filter)
 
-		// HTMX nav -> fragment-only
 		if r.Header.Get("HX-Request") == "true" {
 			templ.Handler(page).ServeHTTP(w, r)
 			return
 		}
 
-		// full GET -> wrap in base layout (this brings back nav + CSS)
 		templ.Handler(base.Base(models.Data{Title: "Job Listings - ", User: loggedUser}, page)).
 			ServeHTTP(w, r)
 	}
@@ -151,14 +164,12 @@ func JobDetail(dbConn *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// Expect /jobs/{id}
 		path := strings.TrimPrefix(r.URL.Path, "/jobs/")
 		if path == "" || path == r.URL.Path {
 			http.NotFound(w, r)
 			return
 		}
 
-		// If someone hits /jobs/123/anything, treat as not found for now
 		if strings.Contains(path, "/") {
 			http.NotFound(w, r)
 			return
@@ -170,7 +181,6 @@ func JobDetail(dbConn *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// Load logged user for base layout/nav
 		userID := session.Manager.GetInt64(r.Context(), "userID")
 		if userID == 0 {
 			http.Redirect(w, r, "/login", http.StatusFound)
@@ -195,7 +205,6 @@ func JobDetail(dbConn *sql.DB) http.HandlerFunc {
 			IsActive:  u.IsActive,
 		}
 
-		// Load job
 		job, err := repo.GetJobByID(r.Context(), dbConn, jobID)
 		if err != nil {
 			if err == repo.ErrJobNotFound {
@@ -216,7 +225,6 @@ func JobDetail(dbConn *sql.DB) http.HandlerFunc {
 				return
 			}
 
-			// non-404 errors (DB down, etc)
 			if r.Header.Get("HX-Request") == "true" {
 				templ.Handler(shared.Error("Failed to load job")).ServeHTTP(w, r)
 			} else {
@@ -241,13 +249,11 @@ func JobDetail(dbConn *sql.DB) http.HandlerFunc {
 
 		page := pages.JobDetailPage(logged, job, bids)
 
-		// HTMX swap: return body only
 		if r.Header.Get("HX-Request") == "true" {
 			templ.Handler(page).ServeHTTP(w, r)
 			return
 		}
 
-		// Full page: wrap in base (nav + CSS)
 		templ.Handler(base.Base(models.Data{Title: "Job - ", User: logged}, page)).
 			ServeHTTP(w, r)
 	}
@@ -279,30 +285,12 @@ func BidCreate(dbConn *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// auth
-		userID := session.Manager.GetInt64(r.Context(), "userID")
-		if userID == 0 {
-			// HTMX-friendly: redirect to login
-			if r.Header.Get("HX-Request") == "true" {
-				w.Header().Set("HX-Redirect", "/login")
-				w.WriteHeader(http.StatusNoContent)
-				return
-			}
-			http.Redirect(w, r, "/login", http.StatusFound)
+		claims, ok := auth.ClaimsFromContext(r.Context())
+		if !ok || claims.UserID == 0 {
+			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
-
-		u, err := db.RetrieveUserByID(r.Context(), dbConn, userID)
-		if err != nil {
-			templ.Handler(shared.Error("Could not load user")).ServeHTTP(w, r)
-			return
-		}
-
-		// Only verified tradespeople
-		if u.Role != models.RoleTradesperson || !u.IsActive {
-			templ.Handler(shared.Error("Only verified tradespeople can place bids.")).ServeHTTP(w, r)
-			return
-		}
+		userID := claims.UserID
 
 		jobID, err := strconv.ParseInt(r.FormValue("job_id"), 10, 64)
 		if err != nil || jobID <= 0 {
@@ -319,9 +307,9 @@ func BidCreate(dbConn *sql.DB) http.HandlerFunc {
 		amount := strings.TrimSpace(r.FormValue("amount"))
 		message := strings.TrimSpace(r.FormValue("message"))
 
-		if amount == "" {
-			// Return form again as fragment with error
-			templ.Handler(pages.BidFormFragmentWithError(jobID, "Amount is required")).ServeHTTP(w, r)
+		amountValue, err := strconv.ParseFloat(amount, 64)
+		if err != nil || amountValue <= 0 || amountValue > 1000000 {
+			templ.Handler(pages.BidFormFragmentWithError(jobID, "Enter a valid bid amount")).ServeHTTP(w, r)
 			return
 		}
 
@@ -340,24 +328,20 @@ func BidCreate(dbConn *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// PRG redirect
 		redirectURL := "/bids/success?bid_id=" + strconv.FormatInt(bidID, 10)
 
 		if r.Header.Get("HX-Request") == "true" {
-			// HTMX: tell the browser to navigate (full page)
 			w.Header().Set("HX-Redirect", redirectURL)
-			w.WriteHeader(http.StatusNoContent) // 204: nothing to swap
+			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 
-		// Non-HTMX fallback (normal browser POST)
 		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 	}
 }
 
 func BidSuccess(dbConn *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// auth
 		userID := session.Manager.GetInt64(r.Context(), "userID")
 		if userID == 0 {
 			http.Redirect(w, r, "/login", http.StatusFound)
@@ -377,13 +361,11 @@ func BidSuccess(dbConn *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// Security check: only the bid owner can view
 		if bid.TradespersonID != userID {
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
 
-		// logged user data for nav
 		u, err := db.RetrieveUserByID(r.Context(), dbConn, userID)
 		if err != nil {
 			templ.Handler(shared.Error("Could not load user")).ServeHTTP(w, r)
