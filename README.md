@@ -1,204 +1,66 @@
 # TradieLynx
 
-TradieLynx is a marketplace MVP built to connect homeowners with local tradespeople.
+A small marketplace for homeowners to post jobs and tradespeople to bid on them.
 
-The current version focuses on the core marketplace workflow: homeowners post jobs and review submitted bids, while verified tradespeople search open jobs, place bids, and track whether those bids are accepted or rejected.
+I built this as a portfolio project to work through a complete web application, including the parts you don't see in a screenshot: accounts, permissions, database state, and what happens when someone awards a job.
 
-This is an active portfolio project and is **not production-ready**. Features that are not part of the current MVP are kept in the roadmap instead of being shown as if they already work.
+**Status:** Working MVP under development. Not a live marketplace or a production-ready service.
 
-## Current MVP Features
+## What you can do
 
-### Homeowners
-- Register and log in
-- Post a new job
-- Browse open jobs
-- View job details
-- View their own posted jobs
-- Review bids on their jobs
-- Award a job to one bidder
+A homeowner can create an account, post a job, review bids, and choose a tradesperson. Tradespeople register separately, require admin approval, and can browse jobs, filter by keyword or postal code, and submit a bid. Each tradesperson can bid once per job.
 
-### Tradespeople
-- Register and wait for account verification
-- Log in after admin approval
-- Browse and search open jobs by keyword or postal code
-- View job details
-- Submit one bid per job
-- View their submitted bids and bid status
+There's a basic admin flow for approving tradesperson accounts. Public registration cannot create admins.
 
-### Admin
-- Admin accounts cannot be created through public registration
-- Optional local admin bootstrap through environment variables
-- View pending tradesperson accounts
-- Approve tradespeople for access
+## The part I'd look at first
 
-### Application / Backend
-- Session-based authentication using SCS
-- Password hashing with bcrypt
-- Role-based authorization for Homeowner, Tradesperson, and Administrator accounts
-- PostgreSQL persistence
-- Transactional bid awarding so the winner, other bids, and job status update together
-- Go server-side rendering with templ
-- HTMX for partial page interactions and redirects
-- Embedded static assets
-- Docker Compose development environment
-- PostgreSQL healthcheck before the app starts
+**[Bid awarding](internal/repo/bids.go)** is the backend workflow I'm most interested in getting right.
 
-## Tech Stack
+Accepting a bid isn't just changing one field. The chosen bid needs to become accepted, competing submitted bids need to become rejected, and the job needs to move out of the open state. Those updates happen in a PostgreSQL transaction. The code also locks the relevant job and bid rows, checks ownership, and rejects an award if the job is no longer open.
 
-- **Go 1.24+**
-- **PostgreSQL 16**
-- **templ**
-- **HTMX**
-- **SCS** for sessions
-- **bcrypt** for password hashing
-- **Docker + Docker Compose**
+The other area worth exploring is **[authentication and authorization](internal/auth/)**: separate user roles, bcrypt password hashing, server-side sessions, and access checks on protected routes.
 
-## Project Structure
+## Stack
 
-```text
-tradielynx/
-├── cmd/app/                 # Application entry point and routes
-├── internal/
-│   ├── auth/                # Auth middleware, role guards, password helpers
-│   ├── config/              # JSON/environment configuration loading
-│   ├── db/                  # Database setup and direct DB operations
-│   ├── handlers/            # HTTP handlers
-│   ├── models/              # Shared application models
-│   ├── repo/                # Job/bid read queries
-│   ├── session/             # SCS session configuration
-│   └── templates/           # templ pages, layouts, and navigation
-├── static/                  # CSS and images
-├── Dockerfile
-├── docker-compose.yml
-└── .env.example
-```
+- Go, PostgreSQL
+- `templ` and HTMX for server-rendered pages and smaller interactions
+- SCS sessions, bcrypt
+- Docker Compose for local development
+- GitHub Actions for build, test, and static checks
 
-## Getting Started
+The application is server-rendered rather than split into a separate JavaScript frontend and API.
 
-### Prerequisites
+## Run it locally
 
-The easiest way to run the project is with:
-
-- Docker Desktop
-- Docker Compose
-
-### 1. Clone the repository
+You'll need Docker and Docker Compose.
 
 ```bash
 git clone https://github.com/cjkolt/TradieLynx.git
 cd TradieLynx
-```
-
-### 2. Create local environment variables
-
-Copy the example file:
-
-```bash
 cp .env.example .env
 ```
 
-Set your local PostgreSQL password in `.env`.
-
-If you want to test the tradesperson verification flow, also fill in:
-
-```text
-BOOTSTRAP_ADMIN_EMAIL=
-BOOTSTRAP_ADMIN_PASSWORD=
-```
-
-Those values are used only to create the first local admin account when one does not already exist. Public registration never accepts the Administrator role.
-
-### 3. Start the app
+Set your local database password in `.env`, then run:
 
 ```bash
 docker compose up --build
 ```
 
-Then open:
+Open **http://localhost:8080**.
 
-```text
-http://localhost:8080
-```
+To try admin approval, set `BOOTSTRAP_ADMIN_EMAIL` and `BOOTSTRAP_ADMIN_PASSWORD` in `.env` before starting with a fresh local database. These are for local bootstrap only.
 
-The app container waits for PostgreSQL to become healthy before starting.
+For non-Docker development, generate templates with `templ generate` and run `go run ./cmd/app` with PostgreSQL and configuration available.
 
-## Local Configuration
+## Tests and current limits
 
-`config.json` is still supported for local development, but it is ignored by Git and should never contain credentials that are committed to the repository.
+The CI workflow runs template generation, `go test ./...`, `go vet ./...`, and a build. Current unit tests focus mainly on authentication and authorization behavior. They **do not** replace database-backed integration tests for registration, bidding, or simultaneous award requests.
 
-Docker uses environment variables for database credentials. The public `config.example.json` remains available as a reference for the JSON config structure.
+This project still needs those tests, a complete browser walkthrough, and production security work (including CSRF protection, production cookie settings, input validation, rate limiting, and secrets management) before it could responsibly be deployed for real users.
 
-## Database Note
+The local PostgreSQL data is disposable during development. **`docker compose down -v` deletes its volume and all data in it.**
 
-The current bid schema links a bid directly to a registered user and allows only one bid per tradesperson per job.
+I haven't added payments, messaging, or reviews. Right now I'd rather make the central job-and-bid workflow dependable than broaden the feature list.
 
-If you are updating an older local development database created from a previous version of `initial_db.sql`, the easiest option during development is to rebuild the PostgreSQL volume:
-
-```bash
-docker compose down -v
-docker compose up --build
-```
-
-**Warning:** `docker compose down -v` deletes the local PostgreSQL development data in that Docker volume.
-
-## Running Without Docker
-
-The Docker workflow generates templ code automatically before running the app.
-
-For direct local Go development, generate the templates first:
-
-```bash
-templ generate
-go run ./cmd/app
-```
-
-You will also need a reachable PostgreSQL database and either `config.json` or the required database environment variables.
-
-## Automated Checks
-
-GitHub Actions generates the templates, compiles and tests all packages, and
-runs static analysis on pull requests and pushes to main.
-
-To run the same checks locally with Go 1.24.3 or newer:
-
-```bash
-go install github.com/a-h/templ/cmd/templ@v0.3.924
-"$(go env GOPATH)/bin/templ" generate
-go test ./...
-go vet ./...
-go build ./cmd/app
-```
-
-The unit tests do not require PostgreSQL. They cover password verification,
-role parsing, anonymous and inactive access, allowed and forbidden roles,
-browser and HTMX redirects, preservation of the original request URL, and
-refreshing account role/activity from the database before authorization.
-
-These checks are a baseline. Database-backed registration, job posting, bid
-ownership, and complete browser workflows still need integration tests.
-
-## Security Notes
-
-- Passwords are hashed with bcrypt before storage.
-- `config.json` and `.env` are ignored by Git.
-- Public registration accepts only Homeowner and Tradesperson roles.
-- Protected routes use authentication and role middleware.
-- Role and active account state are refreshed from PostgreSQL before protected requests are authorized.
-- Bid ownership is checked before displaying a submitted bid confirmation.
-- Database credentials are supplied through local environment variables rather than being hardcoded in Docker Compose.
-
-This is still an MVP. Production deployment would need additional hardening, HTTPS-only cookies, stronger input validation, CSRF protections, rate limiting, and production secrets management.
-
-## Possible Future Work
-
-- Direct messaging after a job is awarded
-- Richer tradesperson profiles and qualification uploads
-- Ratings and reviews after job completion
-- Database-backed integration tests and browser workflow tests
-- Production deployment and security hardening
-
-## Project Status
-
-**MVP / active development.**
-
-The portfolio MVP is intentionally kept small: posting, verification, job discovery, bidding, bid awarding, and role-based access are the focus.
+---
+*This is a portfolio MVP, not an operating trades marketplace.*
