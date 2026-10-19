@@ -20,6 +20,10 @@ Accepting a bid isn't just changing one field. The chosen bid needs to become ac
 
 The other area worth exploring is **[authentication and authorization](internal/auth/)**: separate user roles, bcrypt password hashing, server-side sessions, and access checks on protected routes.
 
+## See the workflow
+
+I haven't added screenshots of the real application yet. The [demo checklist](docs/demo-checklist.md) covers the short walkthrough I'd like to capture without exposing real user data.
+
 ## Stack
 
 - Go, PostgreSQL
@@ -54,9 +58,18 @@ For non-Docker development, generate templates with `templ generate` and run `go
 
 ## Tests and current limits
 
-The CI workflow runs template generation, `go test ./...`, `go vet ./...`, and a build. Current unit tests focus mainly on authentication and authorization behavior. They **do not** replace database-backed integration tests for registration, bidding, or simultaneous award requests.
+The CI workflow generates templates, compiles the application, runs unit tests, and checks the code with `go vet`. It also starts a disposable PostgreSQL service and runs integration tests for the bid-awarding transaction.
 
-This project still needs those tests, a complete browser walkthrough, and production security work (including CSRF protection, production cookie settings, input validation, rate limiting, and secrets management) before it could responsibly be deployed for real users.
+The database tests cover a successful award, incorrect ownership, mismatched bids, an already-awarded job, rollback on a database write error, and two simultaneous award attempts. You can run them locally with a disposable PostgreSQL database:
+
+```bash
+TRADIELYNX_TEST_DATABASE_URL='postgres://postgres:postgres@localhost:5432/tradielynx_ci?sslmode=disable' \
+  go test -tags=integration -count=1 ./internal/repo
+```
+
+The test database account needs permission to create and remove schemas. Don't point the test suite at a production database.
+
+These tests aren't a complete browser walkthrough. Account registration, job posting, and the entire browser flow still need end-to-end coverage. Production deployment would also need CSRF protection, HTTPS-only cookie settings, rate limiting, stronger input validation, and secrets management.
 
 The local PostgreSQL data is disposable during development. **`docker compose down -v` deletes its volume and all data in it.**
 
