@@ -4,7 +4,7 @@ A small marketplace for homeowners to post jobs and tradespeople to bid on them.
 
 I built this as a portfolio project to work through a complete web application, including the parts you don't see in a screenshot: accounts, permissions, database state, and what happens when someone awards a job.
 
-**Status:** Working MVP under development. Not a live marketplace or a production-ready service.
+**Status:** Completed portfolio MVP. The core job-and-bid workflows are implemented and backed by automated checks. Not a live marketplace or production-ready service.
 
 ## What you can do
 
@@ -14,7 +14,7 @@ There's a basic admin flow for approving tradesperson accounts. Public registrat
 
 ## The part I'd look at first
 
-**[Bid awarding](internal/repo/bids.go)** is the backend workflow I'm most interested in getting right.
+**[Bid awarding](internal/repo/bids.go)** is the backend workflow I spent the most time getting right.
 
 Accepting a bid isn't just changing one field. The chosen bid needs to become accepted, competing submitted bids need to become rejected, and the job needs to move out of the open state. Those updates happen in a PostgreSQL transaction. The code also locks the relevant job and bid rows, checks ownership, and rejects an award if the job is no longer open.
 
@@ -73,7 +73,7 @@ These tests aren't a complete browser walkthrough. Account registration, job pos
 
 The local PostgreSQL data is disposable during development. **`docker compose down -v` deletes its volume and all data in it.**
 
-I haven't added payments, messaging, or reviews. Right now I'd rather make the central job-and-bid workflow dependable than broaden the feature list.
+Payments, messaging, and reviews were outside the scope of this portfolio build.
 
 ---
-*This is a portfolio MVP, not an operating trades marketplace.*
+*Completed portfolio MVP. Not an operating trades marketplace.*
